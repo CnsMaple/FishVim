@@ -2,12 +2,15 @@ import { Mode } from '../../../mode/mode';
 import { cleanFlashMarkers } from './flashMarker';
 import { escapeCSSIcons } from '../../../util/statusBarTextUtils';
 import { VimState } from '../../../state/vimState';
+import { Cursor } from '../../../common/motion/cursor';
 
 export class Flash {
   public searchString: string = '';
   public previousMode: Mode | undefined = undefined;
   public previousSearchString: string = '';
   public firstSearchChat: string = '';
+  public multipleSelectCursor: boolean = false;
+  public multipleSelectCursorList: Cursor[] = [];
 
   displayStatusBarText(cursorChar: string) {
     return escapeCSSIcons(`flash:${this.searchString}${cursorChar}`);

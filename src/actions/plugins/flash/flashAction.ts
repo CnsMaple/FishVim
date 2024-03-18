@@ -27,6 +27,7 @@ import {
 } from './flashMarker';
 import { createFlash } from './flash';
 import { Logger } from '../../../util/logger';
+import { Cursor } from '../../../common/motion/cursor';
 @RegisterAction
 class FlashCommand extends BaseCommand {
   modes = [Mode.Normal, Mode.Visual, Mode.VisualLine, Mode.VisualBlock];
@@ -50,9 +51,38 @@ class FlashCommand extends BaseCommand {
 }
 
 @RegisterAction
+class MutipleSelectCursor extends BaseCommand {
+  modes = [Mode.Normal, Mode.Visual, Mode.VisualLine, Mode.VisualBlock];
+  keys = [['g', 'B']];
+  override actionType = 'motion' as const;
+
+  public override doesActionApply(vimState: VimState, keysPressed: string[]) {
+    return (
+      super.doesActionApply(vimState, keysPressed) &&
+      configuration.flash.enable &&
+      !vimState.isMultiCursor
+    );
+  }
+
+  public override async exec(position: Position, vimState: VimState): Promise<void> {
+    if (!configuration.flash.enable) return;
+
+    vimState.flash = createFlash(vimState);
+    vimState.flash.multipleSelectCursor = true;
+    vimState.flash.multipleSelectCursorList = [];
+    await vimState.setCurrentMode(Mode.FlashSearchInProgressMode);
+  }
+}
+
+@RegisterAction
 class FlashSearchInProgressCommand extends BaseCommand {
   modes = [Mode.FlashSearchInProgressMode];
   keys = ['<character>'];
+  override runsOnceForEveryCursor() {
+    return false;
+  }
+  override runsOnceForEachCountPrefix = true;
+
   override isJump = true;
 
   public override async exec(position: Position, vimState: VimState): Promise<void> {
@@ -64,7 +94,12 @@ class FlashSearchInProgressCommand extends BaseCommand {
     }
 
     if (this.isPressEnter(chat)) {
-      await this.handleEnterJump(vimState);
+      if (vimState.flash.multipleSelectCursor) {
+        await exitFlashMode(vimState);
+        vimState.flash.recordSearchString();
+      } else {
+        await this.handleEnterJump(vimState);
+      }
       return;
     }
 
@@ -171,14 +206,21 @@ class FlashSearchInProgressCommand extends BaseCommand {
 
   private async changeCursorPosition(marker: Marker, vimState: VimState) {
     const operator = vimState.recordedState.operator;
+    let cursorPosition: Position;
     if (operator) {
-      vimState.cursorStopPosition = marker.getOperatorPosition();
+      cursorPosition = marker.getOperatorPosition();
     } else {
-      vimState.cursorStopPosition = marker.getJumpPosition();
+      cursorPosition = marker.getJumpPosition();
     }
 
-    await exitFlashMode(vimState);
-    vimState.flash.recordSearchString();
+    if (vimState.flash.multipleSelectCursor) {
+      vimState.flash.multipleSelectCursorList.push(new Cursor(cursorPosition, cursorPosition));
+      vimState.cursors = vimState.flash.multipleSelectCursorList;
+    } else {
+      vimState.cursorStopPosition = cursorPosition;
+      await exitFlashMode(vimState);
+      vimState.flash.recordSearchString();
+    }
   }
 
   private isBackSpace(key: string) {
@@ -197,5 +239,7 @@ class CommandEscFlashSearchInProgressMode extends BaseCommand {
 
 async function exitFlashMode(vimState: VimState) {
   await vimState.setCurrentMode(vimState.flash.previousMode!);
+  vimState.flash.multipleSelectCursor = false;
+  vimState.flash.multipleSelectCursorList = [];
   vimState.flash.clean();
 }
