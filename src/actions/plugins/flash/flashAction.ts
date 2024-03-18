@@ -26,6 +26,7 @@ import {
   updateViewMarkers,
 } from './flashMarker';
 import { createFlash } from './flash';
+import { Logger } from '../../../util/logger';
 @RegisterAction
 class FlashCommand extends BaseCommand {
   modes = [Mode.Normal, Mode.Visual, Mode.VisualLine, Mode.VisualBlock];
@@ -58,18 +59,25 @@ class FlashSearchInProgressCommand extends BaseCommand {
     const chat = this.keysPressed[0];
 
     if (this.isTriggerLastSearch(chat, vimState)) {
-      this.handleLastSearch(vimState);
+      await this.handleLastSearch(vimState);
       return;
     }
 
     if (this.isPressEnter(chat)) {
-      this.handleEnterJump(vimState);
+      await this.handleEnterJump(vimState);
       return;
     }
 
-    findMarkerByLabel(getCacheMarker(vimState.flash.searchString), chat)
-      ? this.handleJump(chat, vimState)
-      : this.handleSearch(chat, vimState);
+    try {
+      const marker = findMarkerByLabel(getCacheMarker(vimState.flash.searchString), chat);
+      if (marker) {
+        await this.handleJump(chat, vimState);
+      } else {
+        await this.handleSearch(chat, vimState);
+      }
+    } catch (error) {
+      Logger.debug('FlashSearchInProgressCommand error: ' + error);
+    }
   }
   private isTriggerLastSearch(chat: string, vimState: VimState) {
     return this.isPressEnter(chat) && vimState.flash.searchString === '';
@@ -81,7 +89,7 @@ class FlashSearchInProgressCommand extends BaseCommand {
       await vimState.setCurrentMode(vimState.flash.previousMode!);
       return;
     }
-    this.handleSearch(vimState.flash.previousSearchString, vimState, true);
+    await this.handleSearch(vimState.flash.previousSearchString, vimState, true);
   }
 
   private isPressEnter(chat: string) {
@@ -95,7 +103,7 @@ class FlashSearchInProgressCommand extends BaseCommand {
     );
 
     if (firstMarker) {
-      this.changeCursorPosition(firstMarker, vimState);
+      await this.changeCursorPosition(firstMarker, vimState);
     }
   }
 
@@ -107,18 +115,18 @@ class FlashSearchInProgressCommand extends BaseCommand {
       vimState.flash.deleteSearchString();
 
       if (vimState.flash.searchString.length === 0) {
-        exitFlashMode(vimState);
+        await exitFlashMode(vimState);
       } else {
-        this.deleteSearchString(vimState);
+        await this.deleteSearchString(vimState);
       }
     } else {
       vimState.flash.appendSearchString(chat);
 
       if (vimState.flash.searchString.length === 1 || isLastSearch) {
         vimState.flash.firstSearchChat = chat;
-        this.handleFirstSearchString(vimState);
+        await this.handleFirstSearchString(vimState);
       } else {
-        this.handleAppendSearchString(chat, vimState);
+        await this.handleAppendSearchString(chat, vimState);
       }
     }
   }
@@ -157,7 +165,7 @@ class FlashSearchInProgressCommand extends BaseCommand {
   private async handleJump(key: string, vimState: VimState) {
     const markerDecoration = findMarkerByLabel(getCacheMarker(vimState.flash.searchString), key);
     if (markerDecoration) {
-      this.changeCursorPosition(markerDecoration, vimState);
+      await this.changeCursorPosition(markerDecoration, vimState);
     }
   }
 
@@ -169,7 +177,7 @@ class FlashSearchInProgressCommand extends BaseCommand {
       vimState.cursorStopPosition = marker.getJumpPosition();
     }
 
-    exitFlashMode(vimState);
+    await exitFlashMode(vimState);
     vimState.flash.recordSearchString();
   }
 
@@ -183,7 +191,7 @@ class CommandEscFlashSearchInProgressMode extends BaseCommand {
   keys = [['<Esc>'], ['<C-c>'], ['<C-[>']];
 
   public override async exec(position: Position, vimState: VimState): Promise<void> {
-    exitFlashMode(vimState);
+    await exitFlashMode(vimState);
   }
 }
 

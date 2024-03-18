@@ -17,8 +17,8 @@ export class Marker {
   public id: number;
   public isShow: boolean;
   public isNextMatch: boolean;
-  constructor(range: vscode.Range, label: string, editor: vscode.TextEditor, id: number) {
-    this.id = id;
+  constructor(range: vscode.Range, label: string, editor: vscode.TextEditor, id_m: number) {
+    this.id = id_m;
     this.range = range;
     this.labelShowRange = range;
     this.isShow = false;
@@ -188,7 +188,10 @@ export function createMarkers(matches: Match[], labels: string[], editor: vscode
   });
 }
 
-export function createMarkerLabels(matchRanges: Array<{ range: vscode.Range }>, vimState: VimState) {
+export function createMarkerLabels(
+  matchRanges: Array<{ range: vscode.Range }>,
+  vimState: VimState,
+) {
   const nextSearchChatList = Array.from(
     new Set(
       matchRanges.map(({ range }) => {
@@ -207,7 +210,7 @@ export function getNextSearchChat(range: vscode.Range, vimState: VimState) {
     range.end,
     new vscode.Position(range.end.line, range.end.character + 1),
   );
-  return vimState.document.getText(nextRange)
+  return vimState.document.getText(nextRange);
 }
 
 const markersMap: Record<string, Marker[]> = {};
