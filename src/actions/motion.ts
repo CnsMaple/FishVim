@@ -1736,28 +1736,98 @@ class MoveToMatchingBracket extends BaseMovement {
     const lineText = vimState.document.lineAt(position).text;
     const failure = failedMovement(vimState);
 
+    // 使用内置的括号匹配的效果，让光标跳转的效果更好，尽可能避免跳转到括号内部，像："|( ')' )"
+    vimState.editor.selection = new vscode.Selection(position, position);
+    const oldCharBuildIn = vimState.document.lineAt(position).text[position.character];
+    await vscode.commands.executeCommand('editor.action.jumpToBracket');
+    const newPositionBuildIn = vimState.editor.selection.active;
+    // 获取当前光标的字符
+    const currentCharBuildIn =
+      vimState.document.lineAt(newPositionBuildIn).text[newPositionBuildIn.character];
+
+    // 实现思路：
+    // 1. 内置的括号匹配和手动实现的括号匹配同时进行获取，然后判断结果。
+    // 2. 如果位置结果一样，那就返回任意一个结果。
+    // 3. 如果位置结果不一样，那就判断当前两个位置所在的字符。
+    // 4. 如果两个位置所在的字符一样，那就返回内置的括号匹配的位置。
+    // 5. 如果两个位置所在的字符不一样，那就返回手动实现的括号匹配的位置。
+    // ----------------------
+    // 3，4，5的情况主要是处理注释的情况，内置的括号匹配无法处理注释中的括号，会跳转到其他无关的位置，但是手动实现的括号匹配可以处理注释
+    // 因为自己实现的方法里面，括号的匹配字符是必定匹配另一个的，内置的括号匹配的结果不一样那说明是在注释行
     for (let col = position.character; col < lineText.length; col++) {
       const currentChar = lineText[col];
       const pairing = PairMatcher.getPercentPairing(currentChar);
 
-      // we need to check pairing, because with text: bla |bla < blub > blub
-      // this for loop will walk over bla and check for a pairing till it finds <
       if (pairing) {
-        // We found an opening char, now move to the matching closing char
-        return (
-          PairMatcher.nextPairedChar(
-            new Position(position.line, col),
-            lineText[col],
-            vimState,
-            false,
-          ) || failure
+        const retPosition = PairMatcher.nextPairedChar(
+          new Position(position.line, col),
+          lineText[col],
+          vimState,
+          false,
         );
+        // 没有找到对应的位置
+        if (retPosition) {
+          if (retPosition.isEqual(newPositionBuildIn)) {
+            // 两个位置一样，返回任意一个即可
+            return retPosition;
+          } else {
+            // 两个位置不一样，判断当前两个位置所在的字符
+            const newCurrentChar =
+              vimState.document.lineAt(retPosition).text[retPosition.character];
+            if (newCurrentChar === currentCharBuildIn) {
+              // 处理代码行中意外的括号
+              return newPositionBuildIn;
+            } else {
+              // 处理注释行中的括号
+              return retPosition;
+            }
+          }
+        } else {
+          // 内置的括号匹配拿到了，但是手动的没有拿到，判断一下，至少能拿到一个
+          if (oldCharBuildIn === currentChar && currentCharBuildIn === pairing.match) {
+            return newPositionBuildIn;
+          } else {
+            return failure;
+          }
+        }
       }
     }
 
     // No matchable character on the line; admit defeat
     return failure;
   }
+
+  //   public override async execAction(
+  //     position: Position,
+  //     vimState: VimState,
+  //   ): Promise<Position | IMovement> {
+  //     position = position.getLeftIfEOL();
+
+  //     const lineText = vimState.document.lineAt(position).text;
+  //     const failure = failedMovement(vimState);
+
+  //     for (let col = position.character; col < lineText.length; col++) {
+  //       const currentChar = lineText[col];
+  //       const pairing = PairMatcher.getPercentPairing(currentChar);
+
+  //       // we need to check pairing, because with text: bla |bla < blub > blub
+  //       // this for loop will walk over bla and check for a pairing till it finds <
+  //       if (pairing) {
+  //         // We found an opening char, now move to the matching closing char
+  //         return (
+  //           PairMatcher.nextPairedChar(
+  //             new Position(position.line, col),
+  //             lineText[col],
+  //             vimState,
+  //             false,
+  //           ) || failure
+  //         );
+  //       }
+  //     }
+
+  //     // No matchable character on the line; admit defeat
+  //     return failure;
+  //   }
 
   public override async execActionForOperator(
     position: Position,
