@@ -214,7 +214,15 @@ class FlashSearchInProgressCommand extends BaseCommand {
     }
 
     if (vimState.flash.multipleSelectCursor) {
-      vimState.flash.multipleSelectCursorList.push(new Cursor(cursorPosition, cursorPosition));
+      const newCursor = new Cursor(cursorPosition, cursorPosition);
+      const index = vimState.flash.multipleSelectCursorList.findIndex((cursor) => {
+        return newCursor.equals(cursor);
+      });
+      if (index === -1) {
+        vimState.flash.multipleSelectCursorList.push(newCursor);
+      } else {
+        vimState.flash.multipleSelectCursorList.splice(index, 1);
+      }
       vimState.cursors = vimState.flash.multipleSelectCursorList;
     } else {
       vimState.cursorStopPosition = cursorPosition;
