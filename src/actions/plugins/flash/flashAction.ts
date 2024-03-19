@@ -220,9 +220,14 @@ class FlashSearchInProgressCommand extends BaseCommand {
       });
       if (index === -1) {
         vimState.flash.multipleSelectCursorList.push(newCursor);
+        marker.setMarkerLabelBackgroundColor(
+          configuration.flash.marker.multipleSelectMatchBackgroundColor,
+        );
       } else {
         vimState.flash.multipleSelectCursorList.splice(index, 1);
+        marker.setMarkerLabelBackgroundColor(configuration.flash.marker.backgroundColor);
       }
+      marker.updateView();
       vimState.cursors = vimState.flash.multipleSelectCursorList;
     } else {
       vimState.cursorStopPosition = cursorPosition;

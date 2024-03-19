@@ -13,7 +13,13 @@ export class Flash {
   public multipleSelectCursorList: Cursor[] = [];
 
   displayStatusBarText(cursorChar: string) {
-    return escapeCSSIcons(`flash:${this.searchString}${cursorChar}`);
+    if (this.multipleSelectCursor) {
+      return escapeCSSIcons(
+        `multiple ${this.multipleSelectCursorList.length} flash:${this.searchString}${cursorChar}`,
+      );
+    } else {
+      return escapeCSSIcons(`flash:${this.searchString}${cursorChar}`);
+    }
   }
 
   appendSearchString(chat: string) {

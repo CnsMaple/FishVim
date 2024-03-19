@@ -272,7 +272,11 @@ class Configuration implements IConfiguration {
     enable: true,
     ignorecase: true,
     labels: 'hklyuiopnm,qwertzxcvbasdgjf;',
-    marker: { backgroundColor: '#ccff88', nextMatchBackgroundColor: '#ffb86c' },
+    marker: {
+      backgroundColor: '#ccff88',
+      nextMatchBackgroundColor: '#ffb86c',
+      multipleSelectMatchBackgroundColor: '#17548B',
+    },
   };
 
   targets: ITargetsConfiguration = {
