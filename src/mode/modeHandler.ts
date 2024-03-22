@@ -1283,6 +1283,10 @@ export class ModeHandler implements vscode.Disposable, IModeHandler {
                 ),
               );
             }
+            this.vimState.cursors = selections.map((x) => Cursor.FromVSCodeSelection(x));
+            this.vimState.cursors = this.vimState.cursors.map((x) =>
+              x.withNewStop(x.stop.getLeft()),
+            );
             break;
 
           case Mode.Insert:
@@ -1629,7 +1633,7 @@ export class ModeHandler implements vscode.Disposable, IModeHandler {
     }
 
     if (this.currentMode !== Mode.FlashSearchInProgressMode) {
-      this.vimState.flash.clean()
+      this.vimState.flash.clean();
     }
 
     StatusBar.clear(this.vimState, false);
