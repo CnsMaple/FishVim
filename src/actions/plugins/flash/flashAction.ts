@@ -52,24 +52,24 @@ class FlashCommand extends BaseCommand {
 
 @RegisterAction
 class MutipleSelectCursor extends BaseCommand {
-  modes = [Mode.Normal, Mode.Visual, Mode.VisualLine, Mode.VisualBlock];
+  modes = [Mode.Normal];
   keys = [['g', 'B']];
   override actionType = 'motion' as const;
 
   public override doesActionApply(vimState: VimState, keysPressed: string[]) {
-    return (
-      super.doesActionApply(vimState, keysPressed) &&
-      configuration.flash.enable &&
-      !vimState.isMultiCursor
-    );
+    return super.doesActionApply(vimState, keysPressed) && configuration.flash.enable;
   }
 
   public override async exec(position: Position, vimState: VimState): Promise<void> {
-    if (!configuration.flash.enable) return;
+    if (!configuration.flash.enable || vimState.flash.multipleSelectCursor) return;
 
     vimState.flash = createFlash(vimState);
     vimState.flash.multipleSelectCursor = true;
-    vimState.flash.multipleSelectCursorList = [];
+    if (vimState.isMultiCursor) {
+      vimState.flash.multipleSelectCursorList = [...vimState.cursors];
+    } else {
+      vimState.flash.multipleSelectCursorList = [];
+    }
     await vimState.setCurrentMode(Mode.FlashSearchInProgressMode);
   }
 }
