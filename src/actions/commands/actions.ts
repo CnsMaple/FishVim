@@ -927,10 +927,22 @@ class CommandVisualMode extends BaseCommand {
   keys = ['v'];
   override isCompleteAction = false;
 
+  override runsOnceForEveryCursor() {
+    return false;
+  }
+
   public override async exec(position: Position, vimState: VimState): Promise<void> {
     if (vimState.currentMode === Mode.Normal && vimState.recordedState.count > 1) {
       vimState.cursorStopPosition = position.getRight(vimState.recordedState.count - 1);
     }
+
+    if (vimState.currentMode === Mode.VisualBlock) {
+      vimState.cursors = vimState.editor.selections.map((x) => Cursor.FromVSCodeSelection(x));
+      vimState.cursors = vimState.cursors.map((x) => x.withNewStop(x.stop.getLeft()));
+      await vimState.setCurrentMode(Mode.Normal);
+      return;
+    }
+
     await vimState.setCurrentMode(Mode.Visual);
   }
 }

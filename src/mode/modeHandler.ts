@@ -1283,10 +1283,6 @@ export class ModeHandler implements vscode.Disposable, IModeHandler {
                 ),
               );
             }
-            this.vimState.cursors = selections.map((x) => Cursor.FromVSCodeSelection(x));
-            this.vimState.cursors = this.vimState.cursors.map((x) =>
-              x.withNewStop(x.stop.getLeft()),
-            );
             break;
 
           case Mode.Insert:
