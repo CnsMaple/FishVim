@@ -1754,44 +1754,44 @@ class MoveToMatchingBracket extends BaseMovement {
     // ----------------------
     // 3，4，5的情况主要是处理注释的情况，内置的括号匹配无法处理注释中的括号，会跳转到其他无关的位置，但是手动实现的括号匹配可以处理注释
     // 因为自己实现的方法里面，括号的匹配字符是必定匹配另一个的，内置的括号匹配的结果不一样那说明是在注释行
-    for (let col = position.character; col < lineText.length; col++) {
-      const currentChar = lineText[col];
-      const pairing = PairMatcher.getPercentPairing(currentChar);
+    // for (let col = position.character; col < lineText.length; col++) {
+    const col = position.character;
+    const currentChar = lineText[col];
+    const pairing = PairMatcher.getPercentPairing(currentChar);
 
-      if (pairing) {
-        const retPosition = PairMatcher.nextPairedChar(
-          new Position(position.line, col),
-          lineText[col],
-          vimState,
-          false,
-        );
-        // 没有找到对应的位置
-        if (retPosition) {
-          if (retPosition.isEqual(newPositionBuildIn)) {
-            // 两个位置一样，返回任意一个即可
-            return retPosition;
-          } else {
-            // 两个位置不一样，判断当前两个位置所在的字符
-            const newCurrentChar =
-              vimState.document.lineAt(retPosition).text[retPosition.character];
-            if (newCurrentChar === currentCharBuildIn) {
-              // 处理代码行中意外的括号
-              return newPositionBuildIn;
-            } else {
-              // 处理注释行中的括号
-              return retPosition;
-            }
-          }
+    if (pairing) {
+      const retPosition = PairMatcher.nextPairedChar(
+        new Position(position.line, col),
+        lineText[col],
+        vimState,
+        false,
+      );
+      // 没有找到对应的位置
+      if (retPosition) {
+        if (retPosition.isEqual(newPositionBuildIn)) {
+          // 两个位置一样，返回任意一个即可
+          return retPosition;
         } else {
-          // 内置的括号匹配拿到了，但是手动的没有拿到，判断一下，至少能拿到一个
-          if (oldCharBuildIn === currentChar && currentCharBuildIn === pairing.match) {
+          // 两个位置不一样，判断当前两个位置所在的字符
+          const newCurrentChar = vimState.document.lineAt(retPosition).text[retPosition.character];
+          if (newCurrentChar === currentCharBuildIn) {
+            // 处理代码行中意外的括号
             return newPositionBuildIn;
           } else {
-            return failure;
+            // 处理注释行中的括号
+            return retPosition;
           }
+        }
+      } else {
+        // 内置的括号匹配拿到了，但是手动的没有拿到，判断一下，至少能拿到一个
+        if (oldCharBuildIn === currentChar && currentCharBuildIn === pairing.match) {
+          return newPositionBuildIn;
+        } else {
+          return failure;
         }
       }
     }
+    // }
 
     // No matchable character on the line; admit defeat
     return failure;
