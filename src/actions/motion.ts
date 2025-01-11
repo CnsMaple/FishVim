@@ -1800,9 +1800,7 @@ class MoveToMatchingBracket extends BaseMovement {
     // 根据开头判断是否为常用的注释符号
     let isComment = false;
     const commentStarts = [
-      '//', '#', '/*', '<!--', '*/', '-->', '--', ';', 'rem', '\'', '\"',
-      '(*', '*)', '{-', '-}', '=begin', '=end', '"""', '/**', '///', '##',
-      '%', '!', '::', '#region', '#endregion'
+      "--", "#", "//", "/*", "*/", "<!--", "-->", "'''", '"""'
     ];
     for (const start of commentStarts) {
       if (lineTextTrim.startsWith(start)) {
