@@ -3,7 +3,7 @@
   "displayName": "FishVim",
   "description": "FishVim emulation for Visual Studio Code",
   "icon": "images/icon.png",
-  "version": "1.29.1",
+  "version": "1.29.2",
   "publisher": "CnsMaple",
   "galleryBanner": {
     "color": "#e3f4ff",
