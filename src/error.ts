@@ -16,6 +16,7 @@ export enum ErrorCode {
   NoWriteSinceLastChange = 37,
   MultipleMatches = 93,
   NoMatchingBuffer = 94,
+  NoSuchVariable = 108,
   MissingQuote = 114,
   UnknownFunction_call = 117,
   TooManyArgs = 118,
@@ -30,6 +31,7 @@ export enum ErrorCode {
   SearchHitTop = 384,
   SearchHitBottom = 385,
   CannotCloseLastWindow = 444,
+  CantFindFileInPath = 447,
   ArgumentRequired = 471,
   InvalidArgument474 = 474,
   InvalidArgument475 = 475,
@@ -45,6 +47,9 @@ export enum ErrorCode {
   ChangeListIsEmpty = 664,
   ListIndexOutOfRange = 684,
   ArgumentOfSortMustBeAList = 686,
+  LessTargetsThanListItems = 687,
+  MoreTargetsThanListItems = 688,
+  CanOnlyIndexAListDictionaryOrBlob = 689,
   CanOnlyCompareListWithList = 691,
   InvalidOperationForList = 692,
   CannotIndexAFuncref = 695,
@@ -52,6 +57,9 @@ export enum ErrorCode {
   InvalidTypeForLen = 701,
   UsingAFuncrefAsANumber = 703,
   FuncrefVariableNameMustStartWithACapital = 704,
+  SliceRequiresAListOrBlobValue = 709,
+  ListValueHasMoreItemsThanTarget = 710,
+  ListValueHasNotEnoughItems = 711,
   ArgumentOfMaxMustBeAListOrDictionary = 712, // TODO: This should be different for min(), count()
   ListRequired = 714,
   DictionaryRequired = 715,
@@ -98,6 +106,7 @@ export const ErrorMessage: IErrorMessage = {
   37: 'No write since last change (add ! to override)',
   93: 'More than one match',
   94: 'No matching buffer',
+  108: 'No such variable',
   114: 'Missing quote',
   117: 'Unknown function',
   118: 'Too many arguments for function',
@@ -112,6 +121,7 @@ export const ErrorMessage: IErrorMessage = {
   384: 'Search hit TOP without match for',
   385: 'Search hit BOTTOM without match for',
   444: 'Cannot close last window',
+  447: 'Can\'t find file "{FILE_NAME}" in path',
   471: 'Argument required',
   474: 'Invalid argument',
   475: 'Invalid argument',
@@ -127,6 +137,9 @@ export const ErrorMessage: IErrorMessage = {
   664: 'changelist is empty',
   684: 'list index out of range',
   686: 'Argument of sort() must be a List',
+  687: 'Less targets than List items',
+  688: 'More targets than List items',
+  689: 'Can only index a List, Dictionary or Blob',
   691: 'Can only compare List with List',
   692: 'Invalid operation for List',
   695: 'Cannot index a Funcref',
@@ -134,6 +147,9 @@ export const ErrorMessage: IErrorMessage = {
   701: 'Invalid type for len()',
   703: 'Using a Funcref as a Number',
   704: 'Funcref variable name must start with a capital',
+  709: '[:] requires a List or Blob value',
+  710: 'List value has more items than target',
+  711: 'List value has not enough items',
   712: 'Argument of max() must be a List or Dictionary',
   714: 'List required',
   715: 'Dictionary required',
@@ -154,27 +170,33 @@ export const ErrorMessage: IErrorMessage = {
 };
 
 export class VimError extends Error {
-  public readonly code: number;
+  public readonly code: ErrorCode;
   public override readonly message: string;
 
-  private constructor(code: number, message: string) {
+  private constructor(code: ErrorCode, message: string) {
     super();
     this.code = code;
     this.message = message;
   }
 
   static fromCode(code: ErrorCode, extraValue?: string): VimError {
-    if (ErrorMessage[code]) {
+    let message = ErrorMessage[code];
+    if (message) {
+      // TODO: Come up with a more elegant solution
       if (extraValue) {
         if (code === ErrorCode.NothingInRegister) {
           extraValue = ` ${extraValue}`;
         } else if (code === ErrorCode.NoMatchingBuffer || code === ErrorCode.MultipleMatches) {
           extraValue = ` for ${extraValue}`;
+        } else if (code === ErrorCode.CantFindFileInPath) {
+          message = message.replace('{FILE_NAME}', extraValue);
+          extraValue = '';
         } else {
           extraValue = `: ${extraValue}`;
         }
       }
-      return new VimError(code, ErrorMessage[code] + (extraValue ?? ''));
+
+      return new VimError(code, message + (extraValue ?? ''));
     }
 
     throw new Error('unknown error code: ' + code);

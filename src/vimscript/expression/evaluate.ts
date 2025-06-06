@@ -19,11 +19,12 @@ import {
   Value,
   VariableExpression,
 } from './types';
+import { Pattern, SearchDirection } from '../pattern';
 
 // ID of next lambda; incremented each time one is created
 let lambdaNumber = 1;
 
-function toInt(value: Value): number {
+export function toInt(value: Value): number {
   switch (value.type) {
     case 'number':
       return value.value;
@@ -127,7 +128,7 @@ export class Variable {
   }
 }
 
-type VariableStore = Map<string, Variable>;
+export type VariableStore = Map<string, Variable>;
 
 export class EvaluationContext {
   private static globalVariables: VariableStore = new Map();
@@ -266,14 +267,7 @@ export class EvaluationContext {
       throw VimError.fromCode(ErrorCode.FuncrefVariableNameMustStartWithACapital, varExpr.name);
     }
 
-    let store: VariableStore | undefined;
-    if (this.localScopes.length > 0 && varExpr.namespace === undefined) {
-      store = this.localScopes[this.localScopes.length - 1];
-    } else if (varExpr.namespace === 'g' || varExpr.namespace === undefined) {
-      store = EvaluationContext.globalVariables;
-    } else {
-      // TODO
-    }
+    const store = this.getVariableStore(varExpr.namespace);
 
     if (store) {
       const _var = store.get(varExpr.name);
@@ -362,6 +356,16 @@ export class EvaluationContext {
       ErrorCode.UndefinedVariable,
       varExpr.namespace ? `${varExpr.namespace}:${varExpr.name}` : varExpr.name,
     );
+  }
+
+  public getVariableStore(namespace: string | undefined): VariableStore | undefined {
+    if (this.localScopes.length > 0 && namespace === undefined) {
+      return this.localScopes.at(-1);
+    } else if (namespace === 'g' || namespace === undefined) {
+      return EvaluationContext.globalVariables;
+    }
+    // TODO
+    return undefined;
   }
 
   private evaluateIndex(sequence: Value, index: Value): Value {
@@ -617,12 +621,24 @@ export class EvaluationContext {
         case '>':
           return lhs.value > rhs.value;
         case '=~':
-          return false; // TODO
+          const pattern = Pattern.parser({
+            direction: SearchDirection.Forward,
+            delimiter: '/', // TODO: Are these params right?
+          }).tryParse(toString(lhs));
+          return pattern.regex.test(toString(rhs));
       }
     }
   }
 
   private evaluateFunctionCall(call: FunctionCallExpression): Value {
+    const assertPassed = () => {
+      return int(0);
+    };
+    const assertFailed = (msg: string) => {
+      // TODO: Include file & line
+      this.errors.push(msg);
+      return int(1);
+    };
     const getArgs = (min: number, max?: number) => {
       if (max === undefined) {
         max = min;
@@ -668,42 +684,87 @@ export class EvaluationContext {
         // eslint-disable-next-line no-bitwise
         return int(toInt(x!) & toInt(y!));
       }
-      // TODO: assert_*()
+      case 'assert_beeps': {
+        return assertFailed('VSCodeVim does not support beeps');
+      }
       case 'assert_equal': {
         const [expected, actual, msg] = getArgs(2, 3);
         if (this.evaluateComparison('==', true, expected!, actual!)) {
-          return int(0);
+          return assertPassed();
         }
-        this.errors.push(
+        return assertFailed(
           msg
             ? toString(msg)
-            : `Expected ${displayValue(expected!)} but got ${displayValue(actual!)}`, // TODO: Include file & line
+            : `Expected ${displayValue(expected!)} but got ${displayValue(actual!)}`,
         );
-        return int(1);
+      }
+      // TODO: assert_equalfile()
+      // TODO: assert_exception()
+      // TODO: assert_fails()
+      case 'assert_false': {
+        const [actual, msg] = getArgs(1, 2);
+        if (this.evaluateComparison('==', true, bool(false), actual!)) {
+          return assertPassed();
+        }
+        return assertFailed(
+          msg ? toString(msg) : `Expected False but got ${displayValue(actual!)}`,
+        );
+      }
+      case 'assert_inrange': {
+        const [lower, upper, actual, msg] = getArgs(3, 4);
+        if (
+          this.evaluateComparison('>=', true, actual!, lower!) &&
+          this.evaluateComparison('<=', true, actual!, upper!)
+        ) {
+          return assertPassed();
+        }
+        return assertFailed(
+          msg
+            ? toString(msg)
+            : `Expected range ${displayValue(lower!)} - ${displayValue(upper!)} but got ${displayValue(actual!)}`,
+        );
+      }
+      case 'assert_match': {
+        const [pattern, actual, msg] = getArgs(2, 3);
+        if (this.evaluateComparison('=~', true, actual!, pattern!)) {
+          return assertPassed();
+        }
+        return assertFailed(
+          msg
+            ? toString(msg)
+            : `Pattern '${toString(pattern!)}' does not match '${toString(actual!)}'`,
+        );
+      }
+      case 'assert_nobeep': {
+        return assertPassed();
       }
       case 'assert_notequal': {
         const [expected, actual, msg] = getArgs(2, 3);
         if (this.evaluateComparison('!=', true, expected!, actual!)) {
-          return int(0);
+          return assertPassed();
         }
-        this.errors.push(
-          msg ? toString(msg) : `Expected not equal to ${displayValue(expected!)}`, // TODO: Include file & line
+        return assertFailed(
+          msg ? toString(msg) : `Expected not equal to ${displayValue(expected!)}`,
         );
-        return int(1);
+      }
+      case 'assert_notmatch': {
+        const [pattern, actual, msg] = getArgs(2, 3);
+        if (!this.evaluateComparison('=~', true, actual!, pattern!)) {
+          return assertPassed();
+        }
+        return assertFailed(
+          msg ? toString(msg) : `Pattern '${toString(pattern!)}' does match '${toString(actual!)}'`,
+        );
       }
       case 'assert_report': {
-        this.errors.push(toString(getArgs(1)[0]!));
-        return int(1);
+        return assertFailed(toString(getArgs(1)[0]!));
       }
       case 'assert_true': {
-        const [actual, msg] = getArgs(2, 3);
+        const [actual, msg] = getArgs(1, 2);
         if (this.evaluateComparison('==', true, bool(true), actual!)) {
-          return int(0);
+          return assertPassed();
         }
-        this.errors.push(
-          msg ? toString(msg) : `Expected True but got ${displayValue(actual!)}`, // TODO: Include file & line
-        );
-        return int(1);
+        return assertFailed(msg ? toString(msg) : `Expected True but got ${displayValue(actual!)}`);
       }
       // TODO: call()
       case 'ceil': {
@@ -1174,7 +1235,7 @@ export class EvaluationContext {
           if (result[0] === '') {
             result.shift();
           }
-          if (result && result[result.length - 1] === '') {
+          if (result.at(-1) === '') {
             result.pop();
           }
         }
@@ -1193,8 +1254,21 @@ export class EvaluationContext {
         }
         return list(result.map(int));
       }
-      // TODO: str2nr()
-      // TODO: stridx()
+      case 'str2nr': {
+        const [s, _base] = getArgs(1, 2);
+        const base = _base ? toInt(_base) : 10;
+        if (![2, 8, 10, 16].includes(base)) {
+          throw VimError.fromCode(ErrorCode.InvalidArgument474);
+        }
+        // TODO: Skip prefixes like 0x
+        const parsed = Number.parseInt(toString(s!), base);
+        return int(isNaN(parsed) ? 0 : parsed);
+      }
+      case 'stridx': {
+        const [haystack, needle, start] = getArgs(2, 3);
+
+        return int(toString(haystack!).indexOf(toString(needle!), start ? toInt(start) : 0));
+      }
       case 'string': {
         const [x] = getArgs(1);
         return str(displayValue(x!));
@@ -1203,7 +1277,13 @@ export class EvaluationContext {
         const [s] = getArgs(1);
         return int(toString(s!).length);
       }
-      // TODO: strpart()
+      case 'strpart': {
+        const [_src, _start, _len, chars] = getArgs(2, 4);
+        const src = toString(_src!);
+        const start = toInt(_start!);
+        const len = _len ? toInt(_len) : src.length - start;
+        return str(src.substring(start, start + len));
+      }
       // TODO: submatch()
       // TODO: substitute()
       case 'tan': {
