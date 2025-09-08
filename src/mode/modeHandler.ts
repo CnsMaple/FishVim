@@ -415,7 +415,7 @@ export class ModeHandler implements vscode.Disposable, IModeHandler {
           end: this.vimState.cursorStopPosition,
         };
       }
-      void this.updateView({ drawSelection: toDraw, revealRange: false });
+      this.updateView({ drawSelection: toDraw, revealRange: false });
     }
   }
 

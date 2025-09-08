@@ -52,6 +52,7 @@ export enum ErrorCode {
   CanOnlyIndexAListDictionaryOrBlob = 689,
   CanOnlyCompareListWithList = 691,
   InvalidOperationForList = 692,
+  InvalidOperationForFuncrefs = 694,
   CannotIndexAFuncref = 695,
   UnknownFunction_funcref = 700,
   InvalidTypeForLen = 701,
@@ -84,12 +85,16 @@ export enum ErrorCode {
   NumberOrFloatRequired = 808,
   ArgumentOfMapMustBeAListDictionaryOrBlob = 896,
   ListOrBlobRequired = 897,
+  MaxDepthMustBeANonNegativeNumber = 900,
   ExpectedADict = 922,
   SecondArgumentOfFunction = 923,
   BlobLiteralShouldHaveAnEvenNumberOfHexCharacters = 973,
   UsingABlobAsANumber = 974,
+  CanOnlyCompareBlobWithBlob = 977,
+  InvalidOperationForBlob = 978,
   CannotModifyExistingVariable = 995,
   CannotLockARegister = 996,
+  ListRequiredForArgument = 1211,
 }
 
 export const ErrorMessage: IErrorMessage = {
@@ -142,6 +147,7 @@ export const ErrorMessage: IErrorMessage = {
   689: 'Can only index a List, Dictionary or Blob',
   691: 'Can only compare List with List',
   692: 'Invalid operation for List',
+  694: 'Invalid operation for Funcrefs',
   695: 'Cannot index a Funcref',
   700: 'Unknown function',
   701: 'Invalid type for len()',
@@ -167,6 +173,22 @@ export const ErrorMessage: IErrorMessage = {
   741: 'Value is locked',
   745: 'Using a List as a Number',
   748: 'No previously used register',
+  804: "Cannot use '%' with Float",
+  805: 'Using a Float as a Number',
+  806: 'Using Float as a String',
+  808: 'Number or Float required',
+  896: 'Argument of map() must be a List, Dictionary or Blob',
+  897: 'List or Blob required',
+  900: 'maxdepth must be a non-negative number',
+  922: 'expected a dict',
+  923: 'Second argument of function() must be a list or a dict',
+  973: 'Blob literal should have an even number of hex characters',
+  974: 'Using a Blob as a Number',
+  977: 'Can only compare Blob with Blob',
+  978: 'Invalid operation for Blob',
+  995: 'Cannot modify existing variable',
+  996: 'Cannot lock a register',
+  1211: 'List required for argument {IDX}',
 };
 
 export class VimError extends Error {
@@ -190,6 +212,9 @@ export class VimError extends Error {
           extraValue = ` for ${extraValue}`;
         } else if (code === ErrorCode.CantFindFileInPath) {
           message = message.replace('{FILE_NAME}', extraValue);
+          extraValue = '';
+        } else if (code === ErrorCode.ListRequiredForArgument) {
+          message = message.replace('{IDX}', extraValue);
           extraValue = '';
         } else {
           extraValue = `: ${extraValue}`;
