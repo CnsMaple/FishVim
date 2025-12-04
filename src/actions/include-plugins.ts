@@ -2,8 +2,8 @@
 import './plugins/camelCaseMotion';
 import './plugins/easymotion/easymotion.cmd';
 import './plugins/easymotion/registerMoveActions';
-import './plugins/sneak';
+import './plugins/flash/flashAction';
 import './plugins/replaceWithRegister';
+import './plugins/sneak';
 import './plugins/surround';
 import './plugins/targets/targets';
-import './plugins/flash/flashAction';

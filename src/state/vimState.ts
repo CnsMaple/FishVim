@@ -4,6 +4,7 @@ import { SUPPORT_IME_SWITCHER, SUPPORT_NVIM } from 'platform/constants';
 import { Position } from 'vscode';
 import { IMovement } from '../actions/baseMotion';
 import { IEasyMotion } from '../actions/plugins/easymotion/types';
+import { Flash } from '../actions/plugins/flash/flash';
 import { SurroundState } from '../actions/plugins/surround';
 import { ExCommandLine, SearchCommandLine } from '../cmd_line/commandLine';
 import { Cursor } from '../common/motion/cursor';
@@ -16,7 +17,6 @@ import { HistoryTracker } from './../history/historyTracker';
 import { RegisterMode } from './../register/register';
 import { ReplaceState } from './../state/replaceState';
 import { globalState } from './globalState';
-import { Flash } from '../actions/plugins/flash/flash';
 import { RecordedState } from './recordedState';
 
 interface IInputMethodSwitcher {
@@ -152,7 +152,7 @@ export class VimState implements vscode.Disposable {
   /**
    * The position of every cursor. Will never be empty.
    */
-  private _cursors: Cursor[] = [new Cursor(new Position(0, 0), new Position(0, 0))];
+  private _cursors: Cursor[] = [Cursor.atPosition(new Position(0, 0))];
 
   public get cursors(): Cursor[] {
     return this._cursors;
